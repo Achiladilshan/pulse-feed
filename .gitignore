@@ -41,3 +41,5 @@ app-example
 # expo prebuild
 android
 ios
+
+.env
