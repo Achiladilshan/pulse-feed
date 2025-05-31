@@ -4,7 +4,6 @@
   "version": "1.0.0",
   "scripts": {
     "start": "expo start",
-    "reset-project": "node ./scripts/reset-project.js",
     "android": "expo run:android",
     "ios": "expo run:ios",
     "web": "expo start --web",
@@ -17,6 +16,8 @@
     "@react-navigation/bottom-tabs": "^7.2.0",
     "@react-navigation/elements": "^2.3.8",
     "@react-navigation/native": "^7.0.14",
+    "@tanstack/react-query": "^5.79.0",
+    "axios": "^1.9.0",
     "expo": "~52.0.46",
     "expo-blur": "~14.0.3",
     "expo-constants": "~17.0.8",
@@ -42,10 +43,15 @@
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",
+    "@tanstack/eslint-plugin-query": "^5.78.0",
     "@types/react": "~18.3.23",
-    "eslint": "^9.25.0",
+    "eslint": "^8.57.1",
     "eslint-config-expo": "~8.0.1",
-    "typescript": "~5.8.3"
+    "eslint-config-prettier": "^10.1.5",
+    "typescript": "~5.8.3",
+    "eslint-plugin-prettier": "^5.2.1",
+    "eslint-plugin-security": "^3.0.1",
+    "eslint-plugin-simple-import-sort": "^12.1.1"
   },
   "private": true
 }
