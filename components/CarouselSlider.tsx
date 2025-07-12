@@ -81,7 +81,7 @@ export const CarouselSlider = (props: CarouselSliderProps) => {
         onMomentumScrollEnd={(event) => {
           const index = Math.round(
             event.nativeEvent.contentOffset.x /
-              event.nativeEvent.layoutMeasurement.width
+            event.nativeEvent.layoutMeasurement.width
           );
           setCurrentPage(index);
         }}

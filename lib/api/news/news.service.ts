@@ -3,7 +3,7 @@ import { NewsApiResponse } from "./news.type";
 
 export const getNews = async () => {
   const response = await apiClient.get<NewsApiResponse>(
-    "/top-headlines?country=us&pageSize=10"
+    "/top-headlines?country=us&pageSize=10",
   );
   return response.data;
 };

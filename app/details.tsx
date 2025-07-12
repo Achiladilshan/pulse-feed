@@ -13,7 +13,7 @@ const DetailsScreen = () => {
     navigation.setOptions({
       title: headerTitle?.toString() || "Details",
     });
-  }, [headerTitle]);
+  }, [headerTitle, navigation]);
 
   return (
     <View style={styles.container}>
@@ -32,7 +32,7 @@ const DetailsScreen = () => {
 
 export default DetailsScreen;
 
-const styles = StyleSheet.create((theme, rt) => ({
+const styles = StyleSheet.create((_theme, rt) => ({
   container: {
     flex: 1,
     paddingBottom: rt.insets.bottom,

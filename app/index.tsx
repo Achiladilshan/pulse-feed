@@ -115,13 +115,15 @@ export default function HomeScreen() {
       <View style={styles.contentContainer}>
         <View style={styles.carouselContainer}>
           <Text style={styles.sectionTitle}>Recently Viewed</Text>
-          <CarouselSlider
-            data={newsData?.articles ?? []}
-            showPagination={true}
-            handleItemPress={(id, item) =>
-              console.log("Item pressed:", id, item)
-            }
-          />
+          {newsData?.articles?.length ? (
+            <CarouselSlider
+              data={newsData.articles}
+              showPagination={true}
+              handleItemPress={(id, item) =>
+                console.log("Item pressed:", id, item)
+              }
+            />
+          ) : null}
         </View>
 
         <View style={styles.newsContainer}>
