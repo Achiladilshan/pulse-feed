@@ -23,30 +23,30 @@ export default function HomeScreen() {
   const searchMutation = useSearchNews();
 
   const handleSearch = () => {
-  const trimmed = searchText.trim();
-  if (!trimmed) return;
+    const trimmed = searchText.trim();
+    if (!trimmed) return;
 
-  const cached = searchCache.get(trimmed);
-  console.log('cached:', cached?.articles.length);
-  if (cached) {
-    console.log('From cache:', trimmed);
-    setSearchResults(cached.articles);
-    setActiveSearch(true);
-    return;
-  }
-
-  searchMutation.mutate(trimmed, {
-    onSuccess: (data) => {
-      const articles = data.articles ?? [];
-      searchCache.set(trimmed, { articles });
-      setSearchResults(articles);
+    const cached = searchCache.get(trimmed);
+    console.log("cached:", cached?.articles.length);
+    if (cached) {
+      console.log("From cache:", trimmed);
+      setSearchResults(cached.articles);
       setActiveSearch(true);
-    },
-    onError: (error) => {
-      console.error("Search error:", error);
-    },
-  });
-};
+      return;
+    }
+
+    searchMutation.mutate(trimmed, {
+      onSuccess: (data) => {
+        const articles = data.articles ?? [];
+        searchCache.set(trimmed, { articles });
+        setSearchResults(articles);
+        setActiveSearch(true);
+      },
+      onError: (error) => {
+        console.error("Search error:", error);
+      },
+    });
+  };
 
   const handleClearSearch = () => {
     setSearchText("");
@@ -130,11 +130,7 @@ export default function HomeScreen() {
           </Text>
 
           <FlatList
-            data={
-              activeSearch
-                ? searchResults
-                : newsData?.articles ?? []
-            }
+            data={activeSearch ? searchResults : (newsData?.articles ?? [])}
             renderItem={renderItem}
             keyExtractor={(_item, index) => index.toString()}
             ItemSeparatorComponent={() => <View style={{ height: 20 }} />}
@@ -146,7 +142,7 @@ export default function HomeScreen() {
   );
 }
 
-const styles = StyleSheet.create((theme, rt) => ({
+const styles = StyleSheet.create((_theme, rt) => ({
   container: {
     flex: 1,
     backgroundColor: "white",
