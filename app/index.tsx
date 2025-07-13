@@ -3,7 +3,7 @@ import NewsCard from "@/components/NewsCard";
 import { useSearchNews } from "@/lib/api/news/news.search.mutation";
 import { Article } from "@/lib/api/news/news.type";
 import { queries } from "@/lib/api/queries";
-import { searchCache } from "@/lib/cache";
+import { cacheMetrics, getCacheStats, searchCache } from "@/lib/cache";
 import "@/theme/unistyle";
 import { Ionicons } from "@expo/vector-icons";
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
@@ -22,25 +22,44 @@ export default function HomeScreen() {
   const { data: newsData } = useQuery(queries.news.list);
   const searchMutation = useSearchNews();
 
-  const handleSearch = () => {
+  const handleSearch = async () => {
     const trimmed = searchText.trim();
     if (!trimmed) return;
 
+    const start = performance.now(); // track latency
+    cacheMetrics.totalRequests++;
+
     const cached = searchCache.get(trimmed);
-    console.log("cached:", cached?.articles.length);
     if (cached) {
-      console.log("From cache:", trimmed);
+      cacheMetrics.hits++;
+      const latency = performance.now() - start;
+      cacheMetrics.latency.push(latency);
+      cacheMetrics.memoryUsage.push(JSON.stringify(cached).length);
+
+      console.log("CACHE HIT:", trimmed, `${latency.toFixed(2)}ms`);
       setSearchResults(cached.articles);
       setActiveSearch(true);
       return;
     }
 
+    cacheMetrics.misses++;
     searchMutation.mutate(trimmed, {
       onSuccess: (data) => {
+        const latency = performance.now() - start;
+        cacheMetrics.latency.push(latency);
+        cacheMetrics.apiCalls++;
+
         const articles = data.articles ?? [];
-        searchCache.set(trimmed, { articles });
+        const value = { articles };
+        searchCache.set(trimmed, value);
+        cacheMetrics.memoryUsage.push(JSON.stringify(value).length);
+
+        console.log("CACHE MISS:", trimmed, `${latency.toFixed(2)}ms`);
         setSearchResults(articles);
         setActiveSearch(true);
+
+        //Print current metrics
+        console.log("Metrics:", getCacheStats());
       },
       onError: (error) => {
         console.error("Search error:", error);
