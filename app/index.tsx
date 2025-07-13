@@ -92,7 +92,7 @@ export default function HomeScreen() {
           memoryUsed,
         });
 
-        console.log("📥 CACHE HIT:", {
+        console.log("CACHE HIT:", {
           uri: item.uri,
           title: cached.title,
           latency: `${latency.toFixed(2)} ms`,
