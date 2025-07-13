@@ -60,33 +60,83 @@ export default function HomeScreen() {
     loadInitialNews();
   };
 
+  const userInteractionLog: {
+    timestamp: string;
+    uri: string;
+    title: string;
+    wasCached: boolean;
+    latency: number;
+    memoryUsed: number;
+  }[] = [];
+
   const handleItemPress = async (item: ArticleMeta) => {
     const start = performance.now(); // start latency timer
-
-    const cached = getArticleFromCache(item.uri); // tracks hit/miss + latency internally
-    if (cached) {
-      router.push({
-        pathname: "/details",
-        params: { data: JSON.stringify(cached), headerTitle: cached.title },
-      });
-      return;
-    }
+    let wasCached = false;
+    let memoryUsed = 0;
 
     try {
-      const fullData = await fetchArticleDetail(item.uri);
+      const cached = getArticleFromCache(item.uri);
 
-      // Save to cache (also pushes into recentlyViewed)
-      setArticleToCache(item.uri, fullData);
+      if (cached) {
+        wasCached = true;
+        memoryUsed = JSON.stringify(cached).length;
+
+        const latency = performance.now() - start;
+
+        userInteractionLog.push({
+          timestamp: new Date().toISOString(),
+          uri: item.uri,
+          title: item.title,
+          wasCached,
+          latency: Number((performance.now() - start).toFixed(2)),
+          memoryUsed,
+        });
+
+        console.log("📥 CACHE HIT:", {
+          uri: item.uri,
+          title: cached.title,
+          latency: `${latency.toFixed(2)} ms`,
+          memoryUsed: `${(memoryUsed / 1024).toFixed(2)} KB`,
+        });
+
+        router.push({
+          pathname: "/details",
+          params: { data: JSON.stringify(cached), headerTitle: cached.title },
+        });
+        return;
+      }
+
+      const fullData = await fetchArticleDetail(item.uri);
+      await setArticleToCache(item.uri, fullData);
+      memoryUsed = JSON.stringify(fullData).length;
 
       const latency = performance.now() - start;
-      console.log(`CACHE MISS (fetched): ${latency.toFixed(2)} ms`);
+
+      userInteractionLog.push({
+        timestamp: new Date().toISOString(),
+        uri: item.uri,
+        title: fullData.title,
+        wasCached: false,
+        latency: Number(latency.toFixed(2)),
+        memoryUsed,
+      });
+
+      console.log("CACHE MISS:", {
+        uri: item.uri,
+        title: fullData.title,
+        latency: `${latency.toFixed(2)} ms`,
+        memoryUsed: `${(memoryUsed / 1024).toFixed(2)} KB`,
+      });
 
       router.push({
         pathname: "/details",
-        params: { data: JSON.stringify(fullData), headerTitle: fullData.title },
+        params: {
+          data: JSON.stringify(fullData),
+          headerTitle: fullData.title,
+        },
       });
     } catch (err) {
-      console.error("Failed to fetch full article:", err);
+      console.error("Failed to fetch article:", item.uri, err);
     } finally {
       recentlyViewed = getRecentlyViewed();
     }
