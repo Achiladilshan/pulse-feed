@@ -1,21 +1,19 @@
-export interface NewsApiResponse {
-  status: string;
-  totalResults: number;
-  articles: Article[];
-}
-
-export interface Article {
-  source: Source;
-  author: string;
+export interface ArticleMeta {
+  uri: string;
   title: string;
-  description: string;
+  date: string;
+  image: string;
   url: string;
-  urlToImage: string;
-  publishedAt: string;
-  content: string;
 }
 
-export interface Source {
-  id: string | null;
-  name: string;
+export interface ArticleDetail {
+  uri: string;
+  title: string;
+  body: string;
+  image: string;
+  url: string;
+  dateTime: string;
+  source: {
+    title: string;
+  };
 }

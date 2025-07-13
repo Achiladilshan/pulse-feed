@@ -1,31 +1,28 @@
-import { Article } from "@/lib/api/news/news.type";
+import { ArticleMeta } from "@/lib/api/news/news.type";
 import { Image } from "expo-image";
 import React from "react";
 import { Pressable, Text, View } from "react-native";
 import { StyleSheet } from "react-native-unistyles";
 
 type NewsCardProps = {
-  data: Article;
-  onPress?: (item: Article) => void;
+  data: ArticleMeta;
+  onPress?: (item: ArticleMeta) => void;
 };
 
-const NewsCard = (props: NewsCardProps) => {
-  const { data, onPress } = props;
-  return (
-    <Pressable style={styles.container} onPress={() => onPress?.(data)}>
-      <View style={styles.imageContainer}>
-        <Image
-          source={{ uri: data.urlToImage }}
-          style={{ width: "100%", height: "100%", borderRadius: 8 }}
-          contentFit="cover"
-        />
-      </View>
-      <View style={styles.textContainer}>
-        <Text>{data.title}</Text>
-      </View>
-    </Pressable>
-  );
-};
+const NewsCard = ({ data, onPress }: NewsCardProps) => (
+  <Pressable style={styles.container} onPress={() => onPress?.(data)}>
+    <View style={styles.imageContainer}>
+      <Image
+        source={{ uri: data.image }}
+        style={{ width: "100%", height: "100%", borderRadius: 8 }}
+        contentFit="cover"
+      />
+    </View>
+    <View style={styles.textContainer}>
+      <Text>{data.title}</Text>
+    </View>
+  </Pressable>
+);
 
 export default NewsCard;
 

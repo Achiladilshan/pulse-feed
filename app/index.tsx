@@ -1,92 +1,103 @@
 import { CarouselSlider } from "@/components/CarouselSlider";
 import NewsCard from "@/components/NewsCard";
-import { useSearchNews } from "@/lib/api/news/news.search.mutation";
-import { Article } from "@/lib/api/news/news.type";
-import { queries } from "@/lib/api/queries";
-import { cacheMetrics, getCacheStats, searchCache } from "@/lib/cache";
+import {
+  fetchArticleDetail,
+  getLatestNews,
+  searchNews,
+} from "@/lib/api/news/news.service";
+import { ArticleMeta } from "@/lib/api/news/news.type";
+import {
+  getArticleFromCache,
+  getRecentlyViewed,
+  loadRecentlyViewedFromStorage,
+  setArticleToCache,
+} from "@/lib/cache/articleDetailCache";
 import "@/theme/unistyle";
 import { Ionicons } from "@expo/vector-icons";
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
-import { useQuery } from "@tanstack/react-query";
 import { router } from "expo-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Pressable, Text, View } from "react-native";
 import { FlatList, TextInput } from "react-native-gesture-handler";
 import { StyleSheet } from "react-native-unistyles";
 
 export default function HomeScreen() {
   const [searchText, setSearchText] = useState("");
+  const [searchResults, setSearchResults] = useState<ArticleMeta[]>([]);
   const [activeSearch, setActiveSearch] = useState(false);
-  const [searchResults, setSearchResults] = useState<Article[]>([]);
 
-  const { data: newsData } = useQuery(queries.news.list);
-  const searchMutation = useSearchNews();
+  let recentlyViewed = getRecentlyViewed();
+
+  const loadInitialNews = async () => {
+    try {
+      const latest = await getLatestNews();
+      setSearchResults(latest);
+    } catch (err) {
+      console.error("Failed to load latest news:", err);
+    }
+  };
+  useEffect(() => {
+    loadInitialNews();
+    loadRecentlyViewedFromStorage();
+  }, []);
 
   const handleSearch = async () => {
     const trimmed = searchText.trim();
     if (!trimmed) return;
-
-    const start = performance.now(); // track latency
-    cacheMetrics.totalRequests++;
-
-    const cached = searchCache.get(trimmed);
-    if (cached) {
-      cacheMetrics.hits++;
-      const latency = performance.now() - start;
-      cacheMetrics.latency.push(latency);
-      cacheMetrics.memoryUsage.push(JSON.stringify(cached).length);
-
-      console.log("CACHE HIT:", trimmed, `${latency.toFixed(2)}ms`);
-      setSearchResults(cached.articles);
+    try {
+      const results = await searchNews(trimmed);
+      setSearchResults(results);
       setActiveSearch(true);
-      return;
+    } catch (err) {
+      console.error("Search failed:", err);
     }
-
-    cacheMetrics.misses++;
-    searchMutation.mutate(trimmed, {
-      onSuccess: (data) => {
-        const latency = performance.now() - start;
-        cacheMetrics.latency.push(latency);
-        cacheMetrics.apiCalls++;
-
-        const articles = data.articles ?? [];
-        const value = { articles };
-        searchCache.set(trimmed, value);
-        cacheMetrics.memoryUsage.push(JSON.stringify(value).length);
-
-        console.log("CACHE MISS:", trimmed, `${latency.toFixed(2)}ms`);
-        setSearchResults(articles);
-        setActiveSearch(true);
-
-        //Print current metrics
-        console.log("Metrics:", getCacheStats());
-      },
-      onError: (error) => {
-        console.error("Search error:", error);
-      },
-    });
   };
 
   const handleClearSearch = () => {
     setSearchText("");
     setSearchResults([]);
     setActiveSearch(false);
+    loadInitialNews();
   };
 
-  const handleItemPress = (item: Article) => {
-    router.push({
-      pathname: "/details",
-      params: { data: JSON.stringify(item), headerTitle: item.title },
-    });
+  const handleItemPress = async (item: ArticleMeta) => {
+    const start = performance.now(); // start latency timer
+
+    const cached = getArticleFromCache(item.uri); // tracks hit/miss + latency internally
+    if (cached) {
+      router.push({
+        pathname: "/details",
+        params: { data: JSON.stringify(cached), headerTitle: cached.title },
+      });
+      return;
+    }
+
+    try {
+      const fullData = await fetchArticleDetail(item.uri);
+
+      // Save to cache (also pushes into recentlyViewed)
+      setArticleToCache(item.uri, fullData);
+
+      const latency = performance.now() - start;
+      console.log(`CACHE MISS (fetched): ${latency.toFixed(2)} ms`);
+
+      router.push({
+        pathname: "/details",
+        params: { data: JSON.stringify(fullData), headerTitle: fullData.title },
+      });
+    } catch (err) {
+      console.error("Failed to fetch full article:", err);
+    } finally {
+      recentlyViewed = getRecentlyViewed();
+    }
   };
 
-  const renderItem = ({ item }: { item: Article }) => (
+  const renderItem = ({ item }: { item: ArticleMeta }) => (
     <NewsCard data={item} onPress={handleItemPress} />
   );
 
   return (
     <View style={styles.container}>
-      {/* Header */}
       <View style={styles.headerContainer}>
         <MaterialCommunityIcons
           name="star-three-points-outline"
@@ -95,8 +106,6 @@ export default function HomeScreen() {
         />
         <Text style={styles.headerText}>PulseFeed</Text>
       </View>
-
-      {/* Search */}
       <View style={styles.searchContainer}>
         <View style={styles.searchWrapper}>
           <Ionicons
@@ -122,42 +131,32 @@ export default function HomeScreen() {
           }}
           onPress={activeSearch ? handleClearSearch : handleSearch}
         >
-          {activeSearch ? (
-            <Text style={styles.searchText}>Clear</Text>
-          ) : (
-            <Text style={styles.searchText}>Search</Text>
-          )}
+          <Text style={styles.searchText}>
+            {activeSearch ? "Clear" : "Search"}
+          </Text>
         </Pressable>
       </View>
-
-      {/* Content */}
-      <View style={styles.contentContainer}>
-        <View style={styles.carouselContainer}>
-          <Text style={styles.sectionTitle}>Recently Viewed</Text>
-          {newsData?.articles?.length ? (
-            <CarouselSlider
-              data={newsData.articles}
-              showPagination={true}
-              handleItemPress={(id, item) =>
-                console.log("Item pressed:", id, item)
-              }
-            />
-          ) : null}
-        </View>
-
-        <View style={styles.newsContainer}>
-          <Text style={styles.sectionTitle}>
-            {activeSearch ? "Search Results" : "Top News"}
-          </Text>
-
-          <FlatList
-            data={activeSearch ? searchResults : (newsData?.articles ?? [])}
-            renderItem={renderItem}
-            keyExtractor={(_item, index) => index.toString()}
-            ItemSeparatorComponent={() => <View style={{ height: 20 }} />}
-            showsVerticalScrollIndicator={false}
+      <View style={styles.carouselContainer}>
+        <Text style={styles.sectionTitle}>Recently Viewed</Text>
+        {recentlyViewed.length > 0 && (
+          <CarouselSlider
+            data={recentlyViewed as unknown as ArticleMeta[]}
+            showPagination={true}
+            handleItemPress={(_id, item) => handleItemPress(item)}
           />
-        </View>
+        )}
+      </View>
+      <View style={styles.contentContainer}>
+        <Text style={styles.sectionTitle}>
+          {activeSearch ? "Search Results" : "Top News"}
+        </Text>
+        <FlatList
+          data={searchResults}
+          renderItem={renderItem}
+          keyExtractor={(item) => item.uri}
+          ItemSeparatorComponent={() => <View style={{ height: 20 }} />}
+          showsVerticalScrollIndicator={false}
+        />
       </View>
     </View>
   );
@@ -175,6 +174,10 @@ const styles = StyleSheet.create((_theme, rt) => ({
     flexDirection: "row",
     alignItems: "center",
     gap: 5,
+  },
+  carouselContainer: {
+    marginTop: 20,
+    paddingBottom: 10,
   },
   headerText: {
     fontSize: 25,
@@ -206,18 +209,14 @@ const styles = StyleSheet.create((_theme, rt) => ({
     fontSize: 13,
     fontWeight: "700",
   },
-  carouselContainer: {},
-  newsContainer: {
+  contentContainer: {
+    marginTop: 30,
     flex: 1,
+    gap: 20,
   },
   sectionTitle: {
     fontSize: 18,
     fontWeight: "600",
     marginBottom: 10,
-  },
-  contentContainer: {
-    marginTop: 30,
-    flex: 1,
-    gap: 20,
   },
 }));

@@ -18,13 +18,13 @@ const DetailsScreen = () => {
   return (
     <View style={styles.container}>
       <Image
-        source={{ uri: parsedData?.urlToImage }}
+        source={{ uri: parsedData?.image }}
         style={{ width: "100%", height: 200, borderRadius: 16 }}
         contentFit="cover"
       />
-      <Text style={styles.title}>{parsedData?.description}</Text>
+      <Text style={styles.title}>{parsedData?.title}</Text>
       <ScrollView style={{ flexGrow: 1 }}>
-        <Text>{parsedData?.content}</Text>
+        <Text>{parsedData?.body}</Text>
       </ScrollView>
     </View>
   );
